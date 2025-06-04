@@ -93,6 +93,8 @@ jobs:
                 sed -i "s|^\(  repository: \).*|\1${{ secrets.REGISTRY }}/${{ env.ECR_REPOSITORY }}|" helm/githubactions-charts/values.yaml
                 sed -i "s|^\(  tag: \).*|\1${{ github.run_number }}|" helm/githubactions-charts/values.yaml
 
+                 values: appimage=${{ secrets.REGISTRY }}/${{ env.ECR_REPOSITORY }},apptag=${{ github.run_number }}
+
             - name: Commit and push updated values.yaml
               run: |
                 git config user.name "github-actions[bot]"
