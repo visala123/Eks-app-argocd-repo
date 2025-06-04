@@ -20,14 +20,14 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: my-app-ingress
+  name: vpro-ingress
   namespace: default
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/use-regex: "true"
 spec:
-    rules:
-    - host: # myapp.example.com   # or use the AWS ELB DNS name if no domain
-      http:
+  ingressClassName: nginx
+  rules:
+    - http:
         paths:
           - path: /
             pathType: Prefix
@@ -35,4 +35,4 @@ spec:
               service:
                 name: my-app
                 port:
-                  number: 8080
+                number: 8080
