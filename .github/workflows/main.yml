@@ -83,22 +83,23 @@ jobs:
                 AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
     
             - name: Upload Trivy scan results to GitHub Security tab
-              uses: github/codeql-action/upload-sarif@v2
+              uses: github/codeql-action/upload-sarif@v3
               with:
                 sarif_file: 'trivy-results.sarif'
                 category: 'image'
             - name: Update Helm values.yaml with new image tag
               run: |
-               echo "Updating values.yaml with new image tag..."
-               sed -i "s|^\(  repository: \).*|\1${{ secrets.REGISTRY }}/${{ env.ECR_REPOSITORY }}|" helm/githubactions-charts/values.yaml
-               sed -i "s|^\(  tag: \).*|\1${{ github.run_number }}|" helm/githubactions-charts/values.yaml
+                echo "Updating values.yaml with new image tag..."
+                sed -i "s|^\(  repository: \).*|\1${{ secrets.REGISTRY }}/${{ env.ECR_REPOSITORY }}|" helm/githubactions-charts/values.yaml
+                sed -i "s|^\(  tag: \).*|\1${{ github.run_number }}|" helm/githubactions-charts/values.yaml
 
             - name: Commit and push updated values.yaml
               run: |
-               git config user.name "github-actions[bot]"
-               git config user.email "github-actions[bot]@users.noreply.github.com"
-               git commit -m "Update image tag to ${{ github.run_number }}"
-               git push origin main
+                git config user.name "github-actions[bot]"
+                git config user.email "github-actions[bot]@users.noreply.github.com"
+                git add helm/githubactions-charts/values.yaml
+                git commit -m "Update image tag to ${{ github.run_number }}"
+                git push origin main     
 
     # DeployToEKS:
     #     needs: Build_and_publish
