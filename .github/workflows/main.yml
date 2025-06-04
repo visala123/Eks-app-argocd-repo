@@ -74,7 +74,7 @@ jobs:
             - name: Run Trivy vulnerability scanner
               uses: aquasecurity/trivy-action@master
               with:
-                image-ref: '${{ secrets.REGISTRY }}/eks-app-repo'
+                image-ref: '${{ secrets.REGISTRY }}/${{ env.ECR_REPOSITORY }}'
                 format: 'sarif'
                 output: 'trivy-results.sarif'
               env:
@@ -87,45 +87,57 @@ jobs:
               with:
                 sarif_file: 'trivy-results.sarif'
                 category: 'image'
-
-    DeployToEKS:
-        needs: Build_and_publish
-        runs-on: ubuntu-latest
-        steps:
-            - name: Code checkout
-              uses: actions/checkout@v4
-
-            - name: configure AWS credentials
-              uses: aws-actions/configure-aws-credentials@v1
-              with:
-                aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-                aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-                aws-region: ${{ env.AWS_REGION }}
-
-            - name: Get kubeconfig file
-              run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER }}
-
-            - name: Print kubeconfig file
-              run: cat ~/.kube/config
-              
-            - name: Login to ECR
+            - name: Update Helm values.yaml with new image tag
               run: |
-                kubectl delete secret regcred --ignore-not-found
-                kubectl create secret docker-registry regcred \
-                  --docker-server=${{ secrets.REGISTRY }} \
-                  --docker-username=AWS \
-                  --docker-password=$(aws ecr get-login-password)
-              #run: kubectl create secret docker-registry regcred --docker-server=$${{ secrets.REGISTRY }} --docker-username=AWS --docker-password=$(aws ecr get-login-password)
+               echo "Updating values.yaml with new image tag..."
+               sed -i "s|^\(  repository: \).*|\1${{ secrets.REGISTRY }}/${{ env.ECR_REPOSITORY }}|" helm/githubactions-charts/values.yaml
+               sed -i "s|^\(  tag: \).*|\1${{ github.run_number }}|" helm/githubactions-charts/values.yaml
 
-            - name: Deploy Helm
-              uses: bitovi/github-actions-deploy-eks-helm@v1.2.8
-              with:
-                aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-                aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-                aws-region: ${{ env.AWS_REGION}}
-                cluster-name: ${{ env.EKS_CLUSTER }}
-                ### config-files: .github/values/dev.yaml
-                chart-path: helm/githubactions-charts
-                namespace: default
-                values: appimage=${{ secrets.REGISTRY }}/${{ env.ECR_REPOSITORY }},apptag=${{ github.run_number }}
-                name: githubactions-stack
+            - name: Commit and push updated values.yaml
+              run: |
+               git config user.name "github-actions[bot]"
+               git config user.email "github-actions[bot]@users.noreply.github.com"
+               git commit -m "Update image tag to ${{ github.run_number }}"
+               git push origin main
+
+    # DeployToEKS:
+    #     needs: Build_and_publish
+    #     runs-on: ubuntu-latest
+    #     steps:
+    #         - name: Code checkout
+    #           uses: actions/checkout@v4
+
+    #         - name: configure AWS credentials
+    #           uses: aws-actions/configure-aws-credentials@v1
+    #           with:
+    #             aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    #             aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    #             aws-region: ${{ env.AWS_REGION }}
+
+    #         - name: Get kubeconfig file
+    #           run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER }}
+
+    #         - name: Print kubeconfig file
+    #           run: cat ~/.kube/config
+              
+    #         - name: Login to ECR
+    #           run: |
+    #             kubectl delete secret regcred --ignore-not-found
+    #             kubectl create secret docker-registry regcred \
+    #               --docker-server=${{ secrets.REGISTRY }} \
+    #               --docker-username=AWS \
+    #               --docker-password=$(aws ecr get-login-password)
+    #           #run: kubectl create secret docker-registry regcred --docker-server=$${{ secrets.REGISTRY }} --docker-username=AWS --docker-password=$(aws ecr get-login-password)
+
+    #         - name: Deploy Helm
+    #           uses: bitovi/github-actions-deploy-eks-helm@v1.2.8
+    #           with:
+    #             aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    #             aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    #             aws-region: ${{ env.AWS_REGION}}
+    #             cluster-name: ${{ env.EKS_CLUSTER }}
+    #             ### config-files: .github/values/dev.yaml
+    #             chart-path: helm/githubactions-charts
+    #             namespace: default
+    #             values: appimage=${{ secrets.REGISTRY }}/${{ env.ECR_REPOSITORY }},apptag=${{ github.run_number }}
+    #             name: githubactions-stack

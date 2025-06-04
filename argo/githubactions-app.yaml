@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: githubactions-app
+  namespace: argocd
+  annotations:
+  argocd-image-updater.argoproj.io/image-list: appimage=925471403627.dkr.ecr.ap-northeast-2.amazonaws.com/eks-app-repo
+  argocd-image-updater.argoproj.io/app.update-strategy: latest
+  argocd-image-updater.argoproj.io/app.image-tag-update-strategy: latest
+spec:
+  destination:
+    namespace: default
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    repoURL: https://github.com/visala123/Eks-app-argocd-repo
+    targetRevision: main
+    path: helm/githubactions-charts
+    helm:
+      valueFiles:
+        - values.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+
