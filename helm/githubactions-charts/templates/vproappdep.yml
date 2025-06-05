@@ -13,6 +13,10 @@ spec:
     metadata:
       labels:
         app: vproapp
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"   # Adjust if your app uses another path
+        prometheus.io/port: "8080"       # Match your container port  
     spec:
       containers:
       - name: vproapp
